@@ -661,6 +661,11 @@
                 document.getElementById('date-select').value = lastSelectedDate;
                 document.getElementById('swap-date-select').value = lastSelectedDate;
             }
+
+            // Se clicar na aba de Trocas e houver data selecionada, carregar automaticamente
+            if (index === 2 && lastSelectedDate) {
+                loadSwapOptions();
+            }
         }
 
         function buildMessage(date, swaps = null) {
