@@ -657,6 +657,7 @@
             contents[index].classList.add('active');
             buttons[index].classList.add('active');
 
+            // Restaurar data em todas as abas
             if (lastSelectedDate) {
                 document.getElementById('date-select').value = lastSelectedDate;
                 document.getElementById('swap-date-select').value = lastSelectedDate;
@@ -665,6 +666,17 @@
             // Se clicar na aba de Trocas e houver data selecionada, carregar automaticamente
             if (index === 2 && lastSelectedDate) {
                 loadSwapOptions();
+            }
+
+            // Se voltar para Data ou Trocas, mostrar o texto da última data
+            if ((index === 0 || index === 2) && lastSelectedDate) {
+                document.getElementById('output').value = buildMessage(lastSelectedDate);
+            }
+
+            // Se clicar em Pessoa, limpar o textarea
+            if (index === 1) {
+                document.getElementById('output').value = '';
+                document.getElementById('person-select').value = '';
             }
         }
 
@@ -714,7 +726,10 @@
 
         function searchByPerson() {
             const personFull = document.getElementById('person-select').value;
-            if (!personFull) return;
+            if (!personFull) {
+                document.getElementById('output').value = '';
+                return;
+            }
             
             const personShort = peopleShortMap[personFull];
             let result = '';
