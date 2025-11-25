@@ -1,359 +1,843 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
-import { NAME_MAP, SCHEDULE } from './constants';
-import { buildMessage, findPersonKey, generatePersonReport } from './utils';
-
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// Get current date in Brazil Time
-const today = new Date().toLocaleDateString('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: 'America/Sao_Paulo'
-});
-
-// System instruction with data injection and strict rules
-const SYSTEM_INSTRUCTION = `
-Você é um assistente virtual do "Gerador de Sobreaviso DRV/DEIC".
-Data de hoje: ${today}
-
-DADOS DA ESCALA (Novembro e Dezembro 2025):
-${JSON.stringify(SCHEDULE)}
-
-MAPA DE NOMES (Apelido -> Nome Completo):
-${JSON.stringify(NAME_MAP)}
-
-SUAS RESPONSABILIDADES:
-1. Responder perguntas analíticas (ex: "Quantas vezes o Melo está de sobreaviso?", "Qual o próximo dia da Vanessa?").
-2. Para gerar o TEXTO PADRÃO formatado de um dia específico ou para realizar TROCAS, use a ferramenta 'manage_schedule'.
-3. Para gerar um RELATÓRIO COMPLETO de uma pessoa, use 'get_person_report'.
-
-REGRAS CRÍTICAS:
-- Se o usuário pedir o texto de um dia ou uma troca, CHAME A FERRAMENTA 'manage_schedule'.
-- Se o usuário pedir os dias ou quantidades de alguém, CHAME A FERRAMENTA 'get_person_report'.
-- IMPORTANTE: Se o usuário especificar um mês (ex: "Quantos SA em novembro?"), passe esse mês no parâmetro 'month' da ferramenta 'get_person_report'.
-- AO FAZER TROCAS: As trocas são cumulativas nesta sessão.
-- AO CONSULTAR (sem trocar): Retorne sempre os dados originais.
-
-GERENCIAMENTO DO NAC (Suplente/Apoio):
-- Muitas vezes o campo NAC está vazio na escala original.
-- Se o usuário pedir para "INCLUIR", "COLOCAR", "DEFINIR" ou "ADICIONAR" alguém no NAC (ou Suplente):
-- Chame a ferramenta 'manage_schedule' definindo EXATAMENTE: swap_out='NAC' e swap_in='NomeDaPessoa'.
-- Isso funciona tanto para preencher um vazio quanto para substituir um existente.
-
-FORMATO DE RESPOSTA:
-- Não responda com texto conversacional (ex: "Aqui está", "Feito"). Retorne APENAS o resultado da ferramenta.
-`;
-
-// Tool Definitions
-const manageScheduleTool: FunctionDeclaration = {
-  name: 'manage_schedule',
-  description: 'Gera o texto do sobreaviso para uma data. Permite trocar plantonistas ou PREENCHER/DEFINIR o NAC.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      date: { type: Type.STRING, description: 'A data do sobreaviso no formato DD/MM/AAAA' },
-      swap_out: { type: Type.STRING, description: 'Para TROCAR/ADICIONAR o NAC (mesmo se vazio), envie SEMPRE o valor "NAC". Para plantonistas normais, envie o nome de quem sai.' },
-      swap_in: { type: Type.STRING, description: 'Nome ou apelido de quem vai ENTRAR no sobreaviso.' },
-    },
-    required: ['date'],
-  },
-};
-
-const getPersonReportTool: FunctionDeclaration = {
-  name: 'get_person_report',
-  description: 'Gera um relatório contendo todos os dias de sobreaviso de uma pessoa específica, podendo filtrar por mês.',
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      person_name: { type: Type.STRING, description: 'O nome da pessoa para buscar' },
-      month: { type: Type.STRING, description: 'O mês para filtrar (ex: "novembro", "11", "dezembro"). Se omitido, retorna todos.' },
-    },
-    required: ['person_name'],
-  },
-};
-
-interface Message {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  isReport?: boolean;
-}
-
-const ChatBot: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Store cumulative swaps for the session: { "DD/MM/YYYY": ["P1", "P2", "P3"] }
-  const tempSchedulesRef = useRef<Record<string, [string, string, string]>>({});
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isOpen]);
-
-  const executeScheduleLogic = (date: string, swapOut?: string, swapIn?: string): string => {
-    try {
-        if (!date) return "Data não fornecida.";
-        
-        // Verifica se é uma operação específica de NAC
-        const isNacOperation = swapOut?.toUpperCase() === 'NAC';
-
-        // RESOLUÇÃO DE NOMES
-        // Se for NAC, não precisamos buscar a chave do 'swapOut' (pois é uma string de comando)
-        let realSwapOut = isNacOperation ? 'NAC' : (swapOut ? findPersonKey(swapOut) : undefined);
-        let realSwapIn = swapIn ? findPersonKey(swapIn) : undefined;
-    
-        // Se a data não existir no original
-        if (!SCHEDULE[date]) {
-          return `Data ${date} não encontrada na escala oficial.`;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Sobreaviso DRV/DEIC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    
-        // LÓGICA DE TROCA/INCLUSÃO (Modificação)
-        if (swapOut && swapIn) {
-          if (!isNacOperation && !realSwapOut) return `Não encontrei "${swapOut}" no cadastro.`;
-          if (!realSwapIn) return `Não encontrei "${swapIn}" no cadastro.`;
-    
-          // Para trocas, usamos a memória da sessão (cumulativo) ou o original se ainda não houve trocas
-          const currentSchedule = tempSchedulesRef.current[date] || SCHEDULE[date];
-    
-          // Validação: Se não for NAC, a pessoa que SAI tem que estar na escala
-          if (!isNacOperation && !currentSchedule.includes(realSwapOut!)) {
-            return `Erro: ${swapOut} não consta na escala atual do dia ${date}.`;
-          }
-    
-          // Cria cópia para aplicar a troca
-          const newSchedule = [...currentSchedule] as [string, string, string];
-          let swapped = false;
 
-          if (isNacOperation) {
-            // INCLUSÃO/TROCA DE NAC:
-            // Força a atualização do índice 2 (NAC), independente se estava vazio ou não.
-            newSchedule[2] = realSwapIn!;
-            swapped = true;
-          } else {
-            // Troca convencional (procura o nome na lista e substitui)
-            for (let i = 0; i < 3; i++) {
-                if (newSchedule[i] === realSwapOut) {
-                newSchedule[i] = realSwapIn!;
-                swapped = true;
-                break; 
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+
+        .tab-btn:hover {
+            background: #f9f9f9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        textarea {
+            height: 350px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .swap-container {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .swap-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 12px;
+        }
+
+        .swap-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .swap-row label {
+            margin-bottom: 5px;
+        }
+
+        .swap-row select {
+            margin-bottom: 0;
+        }
+
+        .swap-arrow {
+            text-align: center;
+            font-weight: bold;
+            color: #2563eb;
+            font-size: 18px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-copy {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-copy:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-whatsapp {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-whatsapp:hover {
+            background: #15803d;
+        }
+
+        .btn-clear {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #4b5563;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            textarea {
+                height: 250px;
+            }
+
+            button {
+                min-width: 100%;
+            }
+
+            .tab-btn {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .swap-row {
+                grid-template-columns: 1fr;
+            }
+
+            .swap-arrow {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Gerador de Sobreaviso DRV/DEIC</h1>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab(0)">📅 Buscar por Data</button>
+            <button class="tab-btn" onclick="showTab(1)">👤 Buscar por Pessoa</button>
+            <button class="tab-btn" onclick="showTab(2)">🔄 Trocas</button>
+        </div>
+
+        <div class="content">
+            <!-- ABA 1: BUSCAR POR DATA -->
+            <div class="tab-content active">
+                <label for="date-select">Selecione a data:</label>
+                <select id="date-select" onchange="searchByDate()">
+                    <option value="">-- Escolha uma data --</option>
+                    <option>01/11/2025</option>
+                    <option>02/11/2025</option>
+                    <option>03/11/2025</option>
+                    <option>04/11/2025</option>
+                    <option>05/11/2025</option>
+                    <option>06/11/2025</option>
+                    <option>07/11/2025</option>
+                    <option>08/11/2025</option>
+                    <option>09/11/2025</option>
+                    <option>10/11/2025</option>
+                    <option>11/11/2025</option>
+                    <option>12/11/2025</option>
+                    <option>13/11/2025</option>
+                    <option>14/11/2025</option>
+                    <option>15/11/2025</option>
+                    <option>16/11/2025</option>
+                    <option>17/11/2025</option>
+                    <option>18/11/2025</option>
+                    <option>19/11/2025</option>
+                    <option>20/11/2025</option>
+                    <option>21/11/2025</option>
+                    <option>22/11/2025</option>
+                    <option>23/11/2025</option>
+                    <option>24/11/2025</option>
+                    <option>25/11/2025</option>
+                    <option>26/11/2025</option>
+                    <option>27/11/2025</option>
+                    <option>28/11/2025</option>
+                    <option>29/11/2025</option>
+                    <option>30/11/2025</option>
+                    <option>01/12/2025</option>
+                    <option>02/12/2025</option>
+                    <option>03/12/2025</option>
+                    <option>04/12/2025</option>
+                    <option>05/12/2025</option>
+                    <option>06/12/2025</option>
+                    <option>07/12/2025</option>
+                    <option>08/12/2025</option>
+                    <option>09/12/2025</option>
+                    <option>10/12/2025</option>
+                    <option>11/12/2025</option>
+                    <option>12/12/2025</option>
+                    <option>13/12/2025</option>
+                    <option>14/12/2025</option>
+                    <option>15/12/2025</option>
+                    <option>16/12/2025</option>
+                    <option>17/12/2025</option>
+                    <option>18/12/2025</option>
+                    <option>19/12/2025</option>
+                    <option>20/12/2025</option>
+                    <option>21/12/2025</option>
+                    <option>22/12/2025</option>
+                    <option>23/12/2025</option>
+                    <option>24/12/2025</option>
+                    <option>25/12/2025</option>
+                    <option>26/12/2025</option>
+                    <option>27/12/2025</option>
+                    <option>28/12/2025</option>
+                    <option>29/12/2025</option>
+                    <option>30/12/2025</option>
+                    <option>31/12/2025</option>
+                </select>
+            </div>
+
+            <!-- ABA 2: BUSCAR POR PESSOA -->
+            <div class="tab-content">
+                <label for="person-select">Selecione uma pessoa:</label>
+                <select id="person-select" onchange="searchByPerson()">
+                    <option value="">-- Escolha uma pessoa --</option>
+                    <option>Insp. Acauã</option>
+                    <option>Insp. Alexandre Brozoza</option>
+                    <option>Esc. Anderson Saraiva</option>
+                    <option>Esc. Cátia Fortunato</option>
+                    <option>Esc. César da Costa</option>
+                    <option>Insp. Cristiano Soletti</option>
+                    <option>Esc. Dagoberto O. das Virgens</option>
+                    <option>Insp. Edmilson Melo</option>
+                    <option>Insp. Edna Moraes</option>
+                    <option>Esc. Fernanda Piazza</option>
+                    <option>Insp. Guilherme Mello</option>
+                    <option>Esc. Jefferson Antoniol</option>
+                    <option>Insp. Juliana Tremper</option>
+                    <option>Insp. Juliano Bonacina</option>
+                    <option>Insp. Lucas Loss</option>
+                    <option>Esc. Luciana Bortoli</option>
+                    <option>Insp. Tais Boesing</option>
+                    <option>Insp. Teresinha Carivali</option>
+                    <option>Insp. Thássia Guterres</option>
+                    <option>Insp. Thiago Meireles</option>
+                    <option>Insp. Vanessa Trindade</option>
+                </select>
+            </div>
+
+            <!-- ABA 3: TROCAS -->
+            <div class="tab-content">
+                <label for="swap-date-select">Selecione a data da troca:</label>
+                <select id="swap-date-select" onchange="loadSwapOptions()">
+                    <option value="">-- Escolha uma data --</option>
+                    <option>01/11/2025</option>
+                    <option>02/11/2025</option>
+                    <option>03/11/2025</option>
+                    <option>04/11/2025</option>
+                    <option>05/11/2025</option>
+                    <option>06/11/2025</option>
+                    <option>07/11/2025</option>
+                    <option>08/11/2025</option>
+                    <option>09/11/2025</option>
+                    <option>10/11/2025</option>
+                    <option>11/11/2025</option>
+                    <option>12/11/2025</option>
+                    <option>13/11/2025</option>
+                    <option>14/11/2025</option>
+                    <option>15/11/2025</option>
+                    <option>16/11/2025</option>
+                    <option>17/11/2025</option>
+                    <option>18/11/2025</option>
+                    <option>19/11/2025</option>
+                    <option>20/11/2025</option>
+                    <option>21/11/2025</option>
+                    <option>22/11/2025</option>
+                    <option>23/11/2025</option>
+                    <option>24/11/2025</option>
+                    <option>25/11/2025</option>
+                    <option>26/11/2025</option>
+                    <option>27/11/2025</option>
+                    <option>28/11/2025</option>
+                    <option>29/11/2025</option>
+                    <option>30/11/2025</option>
+                    <option>01/12/2025</option>
+                    <option>02/12/2025</option>
+                    <option>03/12/2025</option>
+                    <option>04/12/2025</option>
+                    <option>05/12/2025</option>
+                    <option>06/12/2025</option>
+                    <option>07/12/2025</option>
+                    <option>08/12/2025</option>
+                    <option>09/12/2025</option>
+                    <option>10/12/2025</option>
+                    <option>11/12/2025</option>
+                    <option>12/12/2025</option>
+                    <option>13/12/2025</option>
+                    <option>14/12/2025</option>
+                    <option>15/12/2025</option>
+                    <option>16/12/2025</option>
+                    <option>17/12/2025</option>
+                    <option>18/12/2025</option>
+                    <option>19/12/2025</option>
+                    <option>20/12/2025</option>
+                    <option>21/12/2025</option>
+                    <option>22/12/2025</option>
+                    <option>23/12/2025</option>
+                    <option>24/12/2025</option>
+                    <option>25/12/2025</option>
+                    <option>26/12/2025</option>
+                    <option>27/12/2025</option>
+                    <option>28/12/2025</option>
+                    <option>29/12/2025</option>
+                    <option>30/12/2025</option>
+                    <option>31/12/2025</option>
+                </select>
+
+                <div class="swap-container" id="swap-options-container" style="display: none;">
+                    <div class="swap-row">
+                        <div>
+                            <label for="swap-person-1">Quem está:</label>
+                            <select id="swap-person-1" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="swap-arrow">→</div>
+                        <div>
+                            <label for="swap-for-1">Vai trocar para:</label>
+                            <select id="swap-for-1" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="swap-row">
+                        <div>
+                            <label for="swap-person-2">Quem está:</label>
+                            <select id="swap-person-2" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="swap-arrow">→</div>
+                        <div>
+                            <label for="swap-for-2">Vai trocar para:</label>
+                            <select id="swap-for-2" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="swap-row">
+                        <div>
+                            <label for="swap-person-3">Quem está:</label>
+                            <select id="swap-person-3" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                        <div class="swap-arrow">→</div>
+                        <div>
+                            <label for="swap-for-3">Vai trocar para:</label>
+                            <select id="swap-for-3" onchange="updateSwapMessage()">
+                                <option value="">-- Selecione --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <textarea id="output" placeholder="O texto do sobreaviso aparecerá aqui..." readonly></textarea>
+
+            <div class="buttons">
+                <button class="btn-copy" onclick="copyText()">📋 Copiar Texto</button>
+                <button class="btn-whatsapp" onclick="sendWhatsApp()">💚 Enviar no WhatsApp</button>
+                <button class="btn-clear" onclick="clearAll()">🗑️ Limpar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lastSelectedDate = null;
+
+        const nameMap = {
+            "Cau": "Insp. Acauã",
+            "Piazza": "Esc. Fernanda Piazza",
+            "Cristiano": "Insp. Cristiano Soletti",
+            "Teresinha": "Insp. Teresinha Carivali",
+            "Thiago": "Insp. Thiago Meireles",
+            "César": "Esc. César da Costa",
+            "Vanessa": "Insp. Vanessa Trindade",
+            "Bona": "Insp. Juliano Bonacina",
+            "Gui Mello": "Insp. Guilherme Mello",
+            "Tais": "Insp. Tais Boesing",
+            "Jeff": "Esc. Jefferson Antoniol",
+            "Luciana": "Esc. Luciana Bortoli",
+            "Edna": "Insp. Edna Moraes",
+            "Saraiva": "Esc. Anderson Saraiva",
+            "Loss": "Insp. Lucas Loss",
+            "Brozoza": "Insp. Alexandre Brozoza",
+            "Dago": "Esc. Dagoberto O. das Virgens",
+            "Thássia": "Insp. Thássia Guterres",
+            "Juliana": "Insp. Juliana Tremper",
+            "Cátia": "Esc. Cátia Fortunato",
+            "Melo": "Insp. Edmilson Melo"
+        };
+
+        const phoneMap = {
+            "Cau": "(51) 986859065",
+            "Piazza": "(51) 993605744",
+            "Cristiano": "(51) 995659880",
+            "Teresinha": "(51) 999829606",
+            "Thiago": "(79) 988080613",
+            "César": "(51) 998911160",
+            "Vanessa": "(55) 984278960",
+            "Bona": "(51) 989276060",
+            "Gui Mello": "(51) 981354933",
+            "Tais": "(51) 980549435",
+            "Jeff": "(24) 981002933",
+            "Luciana": "(51) 993935552",
+            "Edna": "(53) 981339654",
+            "Saraiva": "(51) 993879343",
+            "Loss": "(51) 991055571",
+            "Brozoza": "(51) 996500506",
+            "Dago": "(51) 999920066",
+            "Thássia": "(51) 996499862",
+            "Juliana": "(51) 993337587",
+            "Cátia": "(51) 985744501",
+            "Melo": "(51) 983190815"
+        };
+
+        const peopleShortMap = {
+            "Insp. Acauã": "Cau",
+            "Insp. Alexandre Brozoza": "Brozoza",
+            "Esc. Anderson Saraiva": "Saraiva",
+            "Esc. Cátia Fortunato": "Cátia",
+            "Esc. César da Costa": "César",
+            "Insp. Cristiano Soletti": "Cristiano",
+            "Esc. Dagoberto O. das Virgens": "Dago",
+            "Insp. Edmilson Melo": "Melo",
+            "Insp. Edna Moraes": "Edna",
+            "Esc. Fernanda Piazza": "Piazza",
+            "Insp. Guilherme Mello": "Gui Mello",
+            "Esc. Jefferson Antoniol": "Jeff",
+            "Insp. Juliana Tremper": "Juliana",
+            "Insp. Juliano Bonacina": "Bona",
+            "Insp. Lucas Loss": "Loss",
+            "Esc. Luciana Bortoli": "Luciana",
+            "Insp. Tais Boesing": "Tais",
+            "Insp. Teresinha Carivali": "Teresinha",
+            "Insp. Thássia Guterres": "Thássia",
+            "Insp. Thiago Meireles": "Thiago",
+            "Insp. Vanessa Trindade": "Vanessa"
+        };
+
+        const allPeople = [
+            "Insp. Acauã",
+            "Insp. Alexandre Brozoza",
+            "Esc. Anderson Saraiva",
+            "Esc. Cátia Fortunato",
+            "Esc. César da Costa",
+            "Insp. Cristiano Soletti",
+            "Esc. Dagoberto O. das Virgens",
+            "Insp. Edmilson Melo",
+            "Insp. Edna Moraes",
+            "Esc. Fernanda Piazza",
+            "Insp. Guilherme Mello",
+            "Esc. Jefferson Antoniol",
+            "Insp. Juliana Tremper",
+            "Insp. Juliano Bonacina",
+            "Insp. Lucas Loss",
+            "Esc. Luciana Bortoli",
+            "Insp. Tais Boesing",
+            "Insp. Teresinha Carivali",
+            "Insp. Thássia Guterres",
+            "Insp. Thiago Meireles",
+            "Insp. Vanessa Trindade"
+        ];
+
+        const schedule = {
+            "01/11/2025": ["Cristiano", "Vanessa", "Thiago"],
+            "02/11/2025": ["Cristiano", "Vanessa", "Thiago"],
+            "03/11/2025": ["Piazza", "César", "Vanessa"],
+            "04/11/2025": ["Bona", "Vanessa", "Saraiva"],
+            "05/11/2025": ["Dago", "Thássia", "Thiago"],
+            "06/11/2025": ["Jeff", "Teresinha", "Saraiva"],
+            "07/11/2025": ["Cristiano", "Teresinha", "Thiago"],
+            "08/11/2025": ["Jeff", "Juliana", "Tais"],
+            "09/11/2025": ["Jeff", "Luciana", "Edna"],
+            "10/11/2025": ["Gui Mello", "Bona", "Tais"],
+            "11/11/2025": ["Brozoza", "Loss", "Saraiva"],
+            "12/11/2025": ["Cau", "Luciana", "Edna"],
+            "13/11/2025": ["Melo", "Cátia", "Jeff"],
+            "14/11/2025": ["Piazza", "Bona", "Saraiva"],
+            "15/11/2025": ["Gui Mello", "Thássia", "Saraiva"],
+            "16/11/2025": ["Gui Mello", "Loss", "Saraiva"],
+            "17/11/2025": ["César", "Teresinha", "Jeff"],
+            "18/11/2025": ["Dago", "Cátia", "Edna"],
+            "19/11/2025": ["Jeff", "Thássia", "Saraiva"],
+            "20/11/2025": ["Cristiano", "Juliana", "Thiago"],
+            "21/11/2025": ["Gui Mello", "Melo", "Thiago"],
+            "22/11/2025": ["Brozoza", "Loss", "Thiago"],
+            "23/11/2025": ["Brozoza", "Loss", "Thiago"],
+            "24/11/2025": ["Cau", "Luciana", "Saraiva"],
+            "25/11/2025": ["Brozoza", "Loss", "Vanessa"],
+            "26/11/2025": ["Melo", "Vanessa", "Jeff"],
+            "27/11/2025": ["Piazza", "Gui Mello", "Tais"],
+            "28/11/2025": ["César", "Juliana", "Vanessa"],
+            "29/11/2025": ["Cau", "Luciana", "Edna"],
+            "30/11/2025": ["Cau", "Juliana", "Edna"],
+            "01/12/2025": ["Dago", "Cátia", ""],
+            "02/12/2025": ["Jeff", "Vanessa", ""],
+            "03/12/2025": ["Cristiano", "Juliana", ""],
+            "04/12/2025": ["Gui Mello", "Jeff", ""],
+            "05/12/2025": ["Brozoza", "Loss", ""],
+            "06/12/2025": ["Melo", "Thássia", ""],
+            "07/12/2025": ["Melo", "Thássia", ""],
+            "08/12/2025": ["Cau", "Luciana", ""],
+            "09/12/2025": ["Melo", "Thássia", ""],
+            "10/12/2025": ["Piazza", "Bona", ""],
+            "11/12/2025": ["César", "Teresinha", ""],
+            "12/12/2025": ["Dago", "Cátia", ""],
+            "13/12/2025": ["Piazza", "Bona", ""],
+            "14/12/2025": ["Piazza", "Bona", ""],
+            "15/12/2025": ["Jeff", "Vanessa", ""],
+            "16/12/2025": ["Cristiano", "Juliana", ""],
+            "17/12/2025": ["Gui Mello", "Teresinha", ""],
+            "18/12/2025": ["Brozoza", "Loss", ""],
+            "19/12/2025": ["Cau", "Luciana", ""],
+            "20/12/2025": ["César", "Teresinha", ""],
+            "21/12/2025": ["César", "Teresinha", ""],
+            "22/12/2025": ["Melo", "Thássia", ""],
+            "23/12/2025": ["Piazza", "Bona", ""],
+            "24/12/2025": ["César", "Teresinha", ""],
+            "25/12/2025": ["Dago", "Cátia", ""],
+            "26/12/2025": ["Jeff", "Vanessa", ""],
+            "27/12/2025": ["Dago", "Cátia", ""],
+            "28/12/2025": ["Dago", "Cátia", ""],
+            "29/12/2025": ["Cristiano", "Juliana", ""],
+            "30/12/2025": ["Gui Mello", "Brozoza", ""],
+            "31/12/2025": ["Brozoza", "Loss", ""]
+        };
+
+        function getTodayBrasilia() {
+            const now = new Date();
+            const offset = -3;
+            const brasiliaTime = new Date(now.getTime() + offset * 60 * 60 * 1000);
+            
+            const day = String(brasiliaTime.getUTCDate()).padStart(2, '0');
+            const month = String(brasiliaTime.getUTCMonth() + 1).padStart(2, '0');
+            const year = brasiliaTime.getUTCFullYear();
+            
+            return day + '/' + month + '/' + year;
+        }
+
+        function sortDates(dates) {
+            return dates.sort((a, b) => {
+                const [diaA, mesA, anoA] = a.split('/');
+                const [diaB, mesB, anoB] = b.split('/');
+                const dataA = new Date(anoA, mesA - 1, diaA);
+                const dataB = new Date(anoB, mesB - 1, diaB);
+                return dataA - dataB;
+            });
+        }
+
+        function showTab(index) {
+            const contents = document.querySelectorAll('.tab-content');
+            const buttons = document.querySelectorAll('.tab-btn');
+            
+            contents.forEach((c, i) => {
+                c.classList.remove('active');
+                buttons[i].classList.remove('active');
+            });
+            
+            contents[index].classList.add('active');
+            buttons[index].classList.add('active');
+
+            if (lastSelectedDate) {
+                document.getElementById('date-select').value = lastSelectedDate;
+                document.getElementById('swap-date-select').value = lastSelectedDate;
+            }
+        }
+
+        function buildMessage(date, swaps = null) {
+            let escala = schedule[date];
+            if (!escala) return "";
+            
+            let [sa01, sa02, saNac] = escala;
+
+            if (swaps) {
+                if (swaps[0]) sa01 = peopleShortMap[swaps[0]];
+                if (swaps[1]) sa02 = peopleShortMap[swaps[1]];
+                if (swaps[2]) saNac = peopleShortMap[swaps[2]];
+            }
+
+            const nome1 = nameMap[sa01];
+            const fone1 = phoneMap[sa01];
+            const nome2 = nameMap[sa02];
+            const fone2 = phoneMap[sa02];
+            
+            let text = "*Sobreaviso DRV/DEIC*\n";
+            text += "Data: " + date + "\n\n";
+            text += nome1 + "\n" + fone1 + "\n\n";
+            text += nome2 + "\n" + fone2 + "\n\n";
+            
+            if (saNac && saNac !== "") {
+                const nomeNac = nameMap[saNac];
+                const foneNac = phoneMap[saNac];
+                text += "NAC: " + nomeNac + "\n" + foneNac + "\n\n";
+            }
+            
+            text += "Chefe de SI: Com. Bruna Caldeira\n";
+            text += "(51) 99139-9403\n\n";
+            text += "Autoridade Policial:\n";
+            text += "Del. Jeiselaure de Souza\n";
+            text += "(51) 99145-8919";
+            
+            return text;
+        }
+
+        function searchByDate() {
+            const date = document.getElementById('date-select').value;
+            if (!date) return;
+            lastSelectedDate = date;
+            document.getElementById('output').value = buildMessage(date);
+        }
+
+        function searchByPerson() {
+            const personFull = document.getElementById('person-select').value;
+            if (!personFull) return;
+            
+            const personShort = peopleShortMap[personFull];
+            let result = '';
+            let novCount = 0;
+            let decCount = 0;
+            let datesFound = [];
+
+            for (let date in schedule) {
+                const escala = schedule[date];
+                const sa01 = escala[0];
+                const sa02 = escala[1];
+                const saNac = escala[2];
+                
+                if (sa01 === personShort || sa02 === personShort || saNac === personShort) {
+                    datesFound.push(date);
+                    if (date.includes("/11/")) {
+                        novCount++;
+                    } else if (date.includes("/12/")) {
+                        decCount++;
+                    }
                 }
             }
-          }
-    
-          if (swapped) {
-            // Salva a alteração na memória da sessão
-            tempSchedulesRef.current[date] = newSchedule;
-            return buildMessage(date, false, newSchedule);
-          } else {
-              return "Falha interna ao realizar a troca.";
-          }
-        } 
-        
-        // LÓGICA DE CONSULTA (Sem troca)
-        // Retorna SEMPRE a escala ORIGINAL, ignorando trocas temporárias
-        return buildMessage(date, false, SCHEDULE[date]);
-    } catch (e) {
-        console.error("Erro na lógica de escala:", e);
-        return "Ocorreu um erro ao processar a escala.";
-    }
-  };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+            datesFound = sortDates(datesFound);
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsLoading(true);
+            result += "Novembro: " + novCount + " sobreavisos\n";
+            result += "Dezembro: " + decCount + " sobreavisos\n\n";
+            result += "════════════════════════════════════════\n\n";
 
-    try {
-      // Prepare history for context
-      const history = messages.map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-      }));
-
-      // Generate content with tools
-      const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [...history, { role: 'user', parts: [{ text: userMsg.text }] }],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ functionDeclarations: [manageScheduleTool, getPersonReportTool] }],
-          temperature: 0.1, // Low temperature for consistent formatting
-        }
-      });
-
-      const response = result.candidates?.[0];
-      
-      // Check for Function Calls
-      const functionCalls = response?.content?.parts?.filter(part => part.functionCall)?.map(part => part.functionCall);
-
-      if (functionCalls && functionCalls.length > 0) {
-        // Execute tools locally and DIRECTLY set the result as the response.
-        // This ensures NO conversational text is added by the model.
-        let finalText = '';
-        
-        for (const call of functionCalls) {
-          if (call.name === 'manage_schedule') {
-            const args = call.args as any;
-            const toolResult = executeScheduleLogic(args.date, args.swap_out, args.swap_in);
-            finalText += toolResult + '\n';
-          } else if (call.name === 'get_person_report') {
-            const args = call.args as any;
-            const key = findPersonKey(args.person_name);
-            if (key) {
-              // Pass the optional month argument to filter results
-              finalText += generatePersonReport(key, args.month) + '\n';
-            } else {
-              finalText += `Pessoa "${args.person_name}" não encontrada no cadastro.\n`;
+            for (let i = 0; i < datesFound.length; i++) {
+                if (i > 0) {
+                    result += "\n\n════════════════════════════════════════\n\n";
+                }
+                result += buildMessage(datesFound[i]);
             }
-          }
+            
+            document.getElementById('output').value = result;
         }
 
-        // Clean up trailing newlines
-        finalText = finalText.trim();
-        
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: finalText }]);
+        function loadSwapOptions() {
+            const date = document.getElementById('swap-date-select').value;
+            if (!date) {
+                document.getElementById('swap-options-container').style.display = 'none';
+                return;
+            }
 
-      } else {
-        // Simple text response (Analytical questions, etc.)
-        const text = response?.content?.parts?.[0]?.text || "Desculpe, não entendi.";
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: text }]);
-      }
+            lastSelectedDate = date;
 
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: "Erro ao processar sua solicitação." }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+            const escala = schedule[date];
+            if (!escala) return;
 
-  const handleWhatsAppShare = (text: string) => {
-    const encoded = encodeURIComponent(text);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
-  };
+            const [sa01Short, sa02Short, saNacShort] = escala;
+            const names = [];
+            names[0] = nameMap[sa01Short];
+            names[1] = nameMap[sa02Short];
+            if (saNacShort && saNacShort !== "") {
+                names[2] = nameMap[saNacShort];
+            } else {
+                names[2] = "(Sem NAC neste dia)";
+            }
 
-  return (
-    <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white p-4 rounded-full shadow-2xl transition-all duration-300 z-50 flex items-center justify-center group"
-        title="Assistente IA"
-      >
-        {isOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        )}
-      </button>
+            for (let i = 1; i <= 3; i++) {
+                const elem = document.getElementById('swap-person-' + i);
+                elem.innerHTML = '<option value="">-- ' + names[i-1] + ' --</option>';
+                elem.value = '';
 
-      {/* Chat Window */}
-      {isOpen && (
-        <div className="fixed bottom-24 right-4 sm:right-6 w-[90vw] sm:w-[400px] h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
-          
-          {/* Header */}
-          <div className="bg-blue-600 p-4 text-white flex items-center gap-2 shadow-sm">
-            <div className="bg-white/20 p-2 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5c3.2 0 5.2 2.3 6 4.7 0.9 2.8 0 5.2-1.8 7.2L12 2z"></path></svg>
-            </div>
-            <div>
-              <h3 className="font-bold text-lg">Assistente DRV</h3>
-              <p className="text-xs text-blue-100">Pergunte sobre escalas e trocas</p>
-            </div>
-          </div>
+                const forElem = document.getElementById('swap-for-' + i);
+                forElem.innerHTML = '<option value="">-- Selecione --</option>';
+                allPeople.forEach(person => {
+                    forElem.innerHTML += '<option value="' + person + '">' + person + '</option>';
+                });
+            }
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-400 mt-10 text-sm">
-                <p>Olá! Posso ajudar com:</p>
-                <ul className="mt-2 space-y-1">
-                  <li>• "Quem está de plantão hoje?"</li>
-                  <li>• "Troque o Fulano pelo Ciclano dia X"</li>
-                  <li>• "Quantos plantões o Melo tem?"</li>
-                </ul>
-              </div>
-            )}
-            
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm whitespace-pre-wrap ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-none'
-                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-                {/* WhatsApp Button for Model Messages */}
-                {msg.role === 'model' && (
-                  <button
-                    onClick={() => handleWhatsAppShare(msg.text)}
-                    className="mt-1 flex items-center gap-1 text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded-full hover:bg-green-100 transition-colors border border-green-200"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                    Enviar WhatsApp
-                  </button>
-                )}
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex items-start">
-                <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+            document.getElementById('swap-options-container').style.display = 'block';
+            updateSwapMessage();
+        }
 
-          {/* Input Area */}
-          <div className="p-4 bg-white border-t border-gray-200">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Digite sua mensagem..."
-                className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleSend}
-                disabled={isLoading || !input.trim()}
-                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
+        function updateSwapMessage() {
+            const date = document.getElementById('swap-date-select').value;
+            if (!date) return;
 
-export default ChatBot;
+            const swaps = [];
+            for (let i = 1; i <= 3; i++) {
+                const forVal = document.getElementById('swap-for-' + i).value;
+                swaps.push(forVal || null);
+            }
+
+            document.getElementById('output').value = buildMessage(date, swaps);
+        }
+
+        function copyText() {
+            const text = document.getElementById('output').value;
+            if (!text) {
+                alert('Nenhum texto para copiar!');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Texto copiado!');
+            });
+        }
+
+        function sendWhatsApp() {
+            const text = document.getElementById('output').value;
+            if (!text) {
+                alert('Nenhum texto para enviar!');
+                return;
+            }
+            const encoded = encodeURIComponent(text);
+            window.open(`https://wa.me/?text=${encoded}`, '_blank');
+        }
+
+        function clearAll() {
+            document.getElementById('output').value = '';
+            document.getElementById('date-select').value = '';
+            document.getElementById('person-select').value = '';
+            document.getElementById('swap-date-select').value = '';
+            document.getElementById('swap-options-container').style.display = 'none';
+            lastSelectedDate = null;
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            const todayDate = getTodayBrasilia();
+            if (schedule[todayDate]) {
+                lastSelectedDate = todayDate;
+                document.getElementById('date-select').value = todayDate;
+                document.getElementById('output').value = buildMessage(todayDate);
+            }
+        });
+    </script>
+</body>
+</html>
