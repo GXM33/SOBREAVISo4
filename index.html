@@ -339,6 +339,8 @@
                     <option>31/12/2025</option>
                     <option>01/01/2026</option>
                     <option>02/01/2026</option>
+                    <option>03/01/2026</option>
+                    <option>04/01/2026</option>
                 </select>
             </div>
 
@@ -454,6 +456,8 @@
                     <option>31/12/2025</option>
                     <option>01/01/2026</option>
                     <option>02/01/2026</option>
+                    <option>03/01/2026</option>
+                    <option>04/01/2026</option>
                 </select>
 
                 <div class="swap-container" id="swap-options-container" style="display: none;">
@@ -656,32 +660,34 @@
             "05/12/2025": ["Brozoza", "Loss", "Thiago"],
             "06/12/2025": ["César", "Thássia", "Saraiva"],
             "07/12/2025": ["César", "Thássia", "Thiago"],
-            "08/12/2025": ["Cau", "Luciana", "Saraiva"],
-            "09/12/2025": ["Melo", "Thássia", "Thiago"],
-            "10/12/2025": ["Piazza", "Bona", "Saraiva"],
+            "08/12/2025": ["Vanessa", "Luciana", "Saraiva"],
+            "09/12/2025": ["Luciana", "Thássia", "Thiago"],
+            "10/12/2025": ["Loss", "Bona", "Saraiva"],
             "11/12/2025": ["Jeff", "Teresinha", "Thiago"],
-            "12/12/2025": ["Dago", "Cátia", "Edna"],
-            "13/12/2025": ["Piazza", "Bona", "Edna"],
-            "14/12/2025": ["Piazza", "Bona", "Edna"],
-            "15/12/2025": ["Jeff", "Vanessa", "Edna"],
+            "12/12/2025": ["Dago", "Cátia", "Jeff"],
+            "13/12/2025": ["Piazza", "Dago", "Edna"],
+            "14/12/2025": ["Piazza", "Melo", "Edna"],
+            "15/12/2025": ["Teresinha", "Cau", "Edna"],
             "16/12/2025": ["Cristiano", "Juliana", "Edna"],
-            "17/12/2025": ["Gui Mello", "Teresinha", "Edna"],
-            "18/12/2025": ["Brozoza", "Loss", "Edna"],
-            "19/12/2025": ["Cau", "Luciana", "Edna"],
-            "20/12/2025": ["Cátia", "Teresinha", "Edna"],
-            "21/12/2025": ["Cátia", "Teresinha", "Edna"],
+            "17/12/2025": ["Gui Mello", "Jeff", "Edna"],
+            "18/12/2025": ["Brozoza", "Piazza", "Edna"],
+            "19/12/2025": ["Cau", "Melo", ""],
+            "20/12/2025": ["Cátia", "Teresinha", ""],
+            "21/12/2025": ["Cátia", "Teresinha", ""],
             "22/12/2025": ["Brozoza", "Teresinha", ""],
-            "23/12/2025": ["", "Gui Mello", ""],
+            "23/12/2025": ["Piazza", "Gui Mello", ""],
             "24/12/2025": ["Brozoza", "Teresinha", ""],
-            "25/12/2025": ["", "Gui Mello", ""],
+            "25/12/2025": ["Piazza", "Gui Mello", ""],
             "26/12/2025": ["Brozoza", "Teresinha", ""],
             "27/12/2025": ["Dago", "Melo", "Edna"],
             "28/12/2025": ["Dago", "Melo", "Edna"],
-            "29/12/2025": ["Cau", "Cátia", ""],
+            "29/12/2025": ["Cau", "Cátia", "Dago"],
             "30/12/2025": ["Jeff", "Cristiano", "Edna"],
-            "31/12/2025": ["Cau", "Cátia", ""],
+            "31/12/2025": ["Cau", "Dago", ""],
             "01/01/2026": ["Jeff", "Cristiano", "Edna"],
-            "02/01/2026": ["Cau", "Cátia", ""]
+            "02/01/2026": ["Cau", "Cátia", "Dago"],
+            "03/01/2026": ["Jeff", "", ""],
+            "04/01/2026": ["Jeff", "", ""]
         };
 
         function getTodayBrasilia() {
@@ -735,7 +741,6 @@
             contents[index].classList.add('active');
             buttons[index].classList.add('active');
 
-            // Se voltar para aba de Data, mostrar data de hoje
             if (index === 0) {
                 const todayDate = getTodayBrasilia();
                 document.getElementById('date-select').value = todayDate;
@@ -744,13 +749,11 @@
                 }
             }
 
-            // Se clicar na aba de Trocas e houver data selecionada, carregar automaticamente
             if (index === 2 && lastSelectedDate) {
                 document.getElementById('swap-date-select').value = lastSelectedDate;
                 loadSwapOptions();
             }
 
-            // Se clicar em Pessoa, limpar o textarea e esconder resumo de mês
             if (index === 1) {
                 document.getElementById('output').value = '';
                 document.getElementById('person-select').value = '';
@@ -778,7 +781,6 @@
             
             let text = "*Sobreaviso DRV/DEIC*\n";
             
-            // Se estiver buscando por pessoa, adiciona o dia da semana
             if (isSearchingByPerson) {
                 const dayOfWeek = getDayOfWeek(date);
                 text += "Data: " + date + " (" + dayOfWeek + ")\n\n";
@@ -801,7 +803,9 @@
             if (saNac && saNac !== "") {
                 const nomeNac = nameMap[saNac];
                 const foneNac = phoneMap[saNac];
-                text += "NAC: " + nomeNac + "\n" + foneNac + "\n\n";
+                if (nomeNac && foneNac) {
+                    text += "NAC: " + nomeNac + "\n" + foneNac + "\n\n";
+                }
             }
             
             text += "Chefe de SI: Com. Bruna Caldeira\n";
@@ -840,7 +844,7 @@
             let janCount = 0;
             let datesFound = [];
 
-            for (let date in schedule) {
+            Object.keys(schedule).forEach(date => {
                 const escala = schedule[date];
                 const sa01 = escala[0];
                 const sa02 = escala[1];
@@ -856,23 +860,20 @@
                         janCount++;
                     }
                 }
-            }
+            });
 
             datesFound = sortDates(datesFound);
 
-            // Aplicar filtro de mês se selecionado
             if (monthFilter) {
                 datesFound = datesFound.filter(date => {
                     const dateParts = date.split('/');
                     return dateParts[1] === monthFilter;
                 });
 
-                // Mostrar resumo do mês filtrado
                 const monthName = getMonthName(monthFilter);
                 summaryDiv.textContent = monthName + ": " + datesFound.length + " sobreavisos";
                 summaryDiv.style.display = 'block';
             } else {
-                // Mostrar resumo de todos os meses
                 if (novCount > 0) result += "Novembro: " + novCount + " sobreavisos\n";
                 if (decCount > 0) result += "Dezembro: " + decCount + " sobreavisos\n";
                 if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\n";
@@ -968,15 +969,12 @@
             document.getElementById('output').value = '';
 
             if (currentTab === 0) {
-                // Aba Buscar por Data
                 document.getElementById('date-select').value = '';
             } else if (currentTab === 1) {
-                // Aba Buscar por Pessoa
                 document.getElementById('person-select').value = '';
                 document.getElementById('month-filter').value = '';
                 document.getElementById('month-summary').style.display = 'none';
             } else if (currentTab === 2) {
-                // Aba Trocas
                 document.getElementById('swap-date-select').value = '';
                 document.getElementById('swap-options-container').style.display = 'none';
                 for (let i = 1; i <= 3; i++) {
