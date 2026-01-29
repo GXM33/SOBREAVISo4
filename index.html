@@ -313,8 +313,8 @@
                         <label for="month-filter">Filtrar por mês (opcional):</label>
                         <select id="month-filter" onchange="searchByPerson()">
                             <option value="">-- Todos os meses --</option>
-                            <option value="12">Dezembro 2025</option>
                             <option value="01">Janeiro 2026</option>
+                            <option value="02">Fevereiro 2026</option>
                         </select>
                     </div>
                 </div>
@@ -491,7 +491,7 @@
             "Insp. Vanessa Trindade"
         ];
 
-        /* ✅ ATUALIZADO CONFORME A TABELA DA IMAGEM (01/01/2026 a 02/01/2027) */
+        /* ✅ ATUALIZADO CONFORME A TABELA DA IMAGEM (01/01/2026 a 28/02/2026) */
         const schedule = {
             "01/01/2026": ["quinta-feira", "Jeff", "Cristiano", "Edna"],
             "02/01/2026": ["sexta-feira", "Cau", "Cátia", "Dago"],
@@ -516,15 +516,43 @@
             "21/01/2026": ["quarta-feira", "Melo", "Cristiano", "Juliana"],
             "22/01/2026": ["quinta-feira", "Loss", "Luciana", "Thiago"],
             "23/01/2026": ["sexta-feira", "Thássia", "Melo", "Saraiva"],
-            "24/01/2026": ["sábado", "Brozoza", "Vanessa", ""],
-            "25/01/2026": ["domingo", "Brozoza", "Vanessa", ""],
+            "24/01/2026": ["sábado", "Bona", "Vanessa", "Thiago"],
+            "25/01/2026": ["domingo", "Bona", "Vanessa", "Thiago"],
             "26/01/2026": ["segunda-feira", "Dago", "César", "Juliana"],
             "27/01/2026": ["terça-feira", "Dago", "Bona", "Vanessa"],
             "28/01/2026": ["quarta-feira", "Loss", "Luciana", "Thiago"],
-            "29/01/2026": ["quinta-feira", "Thássia", "Melo", "Saraiva"],
+            "29/01/2026": ["quinta-feira", "Thássia", "Vanessa", "Saraiva"],
             "30/01/2026": ["sexta-feira", "Bona", "César", "Juliana"],
-            "31/01/2026": ["sábado", "Dago", "Cristiano", ""],
-            "02/01/2027": ["sábado", "", "", ""]
+            "31/01/2026": ["sábado", "Dago", "Loss", "Juliana"],
+
+            "01/02/2026": ["domingo", "Dago", "Loss", "Juliana"],
+            "02/02/2026": ["segunda-feira", "Loss", "Luciana", "Vanessa"],
+            "03/02/2026": ["terça-feira", "Saraiva", "Thássia", "César"],
+            "04/02/2026": ["quarta-feira", "Bona", "Thiago", "Juci"],
+            "05/02/2026": ["quinta-feira", "Loss", "Luciana", "Brozoza"],
+            "06/02/2026": ["sexta-feira", "Dago", "Cristiano", "Vanessa"],
+            "07/02/2026": ["sábado", "Cristiano", "Luciana", "Brozoza"],
+            "08/02/2026": ["domingo", "Cristiano", "Luciana", "Brozoza"],
+            "09/02/2026": ["segunda-feira", "Saraiva", "Thássia", "César"],
+            "10/02/2026": ["terça-feira", "Bona", "Thiago", "Juliana"],
+            "11/02/2026": ["quarta-feira", "Dago", "Cristiano", "Vanessa"],
+            "12/02/2026": ["quinta-feira", "Saraiva", "Thássia", "César"],
+            "13/02/2026": ["sexta-feira", "Loss", "Luciana", "Brozoza"],
+            "14/02/2026": ["sábado", "Saraiva", "Thássia", "César"],
+            "15/02/2026": ["domingo", "Saraiva", "Thássia", "César"],
+            "16/02/2026": ["segunda-feira", "César", "Thiago", "Juci"],
+            "17/02/2026": ["terça-feira", "Juci", "Saraiva", "Juliana"],
+            "18/02/2026": ["quarta-feira", "Dago", "Cristiano", "Juci"],
+            "19/02/2026": ["quinta-feira", "Loss", "Luciana", "Vanessa"],
+            "20/02/2026": ["sexta-feira", "Brozoza", "Thássia", "César"],
+            "21/02/2026": ["sábado", "Bona", "Thiago", "Juliana"],
+            "22/02/2026": ["domingo", "Bona", "Thiago", "Juliana"],
+            "23/02/2026": ["segunda-feira", "Cristiano", "Vanessa", "César"],
+            "24/02/2026": ["terça-feira", "Bona", "Thiago", "Juliana"],
+            "25/02/2026": ["quarta-feira", "Loss", "Luciana", "Brozoza"],
+            "26/02/2026": ["quinta-feira", "Saraiva", "Juci", "Bona"],
+            "27/02/2026": ["sexta-feira", "Bona", "Thiago", "Vanessa"],
+            "28/02/2026": ["sábado", "Dago", "Cristiano", "Vanessa"]
         };
 
         function populateDateSelects() {
@@ -584,8 +612,8 @@
 
         function getMonthName(month) {
             const months = {
-                "12": "Dezembro",
-                "01": "Janeiro"
+                "01": "Janeiro",
+                "02": "Fevereiro"
             };
             return months[month] || "";
         }
@@ -700,8 +728,8 @@
 
             const personShort = peopleShortMap[personFull];
             let result = '';
-            let decCount = 0;
             let janCount = 0;
+            let fevCount = 0;
             let datesFound = [];
 
             Object.keys(schedule).forEach(date => {
@@ -714,10 +742,10 @@
 
                 if (sa01 === personShort || sa02 === personShort || saNac === personShort) {
                     datesFound.push(date);
-                    if (date.includes("/12/")) {
-                        decCount++;
-                    } else if (date.includes("/01/")) {
+                    if (date.includes("/01/")) {
                         janCount++;
+                    } else if (date.includes("/02/")) {
+                        fevCount++;
                     }
                 }
             });
@@ -734,8 +762,8 @@
                 summaryDiv.textContent = monthName + ": " + datesFound.length + " sobreavisos";
                 summaryDiv.style.display = 'block';
             } else {
-                if (decCount > 0) result += "Dezembro: " + decCount + " sobreavisos\n";
                 if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\n";
+                if (fevCount > 0) result += "Fevereiro: " + fevCount + " sobreavisos\n";
                 result += "\n════════════════════════════════════════\n\n";
                 summaryDiv.style.display = 'none';
             }
