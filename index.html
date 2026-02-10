@@ -286,6 +286,28 @@
                         <label for="person-select">Selecione uma pessoa:</label>
                         <select id="person-select" onchange="searchByPerson()">
                             <option value="">-- Escolha uma pessoa --</option>
+                            <option>Insp. Acauã</option>
+                            <option>Insp. Alexandre Brozoza</option>
+                            <option>Esc. Anderson Saraiva</option>
+                            <option>Esc. Cátia Fortunato</option>
+                            <option>Esc. César da Costa</option>
+                            <option>Insp. Cristiano Soletti</option>
+                            <option>Esc. Dagoberto O. das Virgens</option>
+                            <option>Insp. Edmilson Melo</option>
+                            <option>Insp. Edna Moraes</option>
+                            <option>Esc. Fernanda Piazza</option>
+                            <option>Insp. Guilherme Mello</option>
+                            <option>Esc. Jefferson Antoniol</option>
+                            <option>Insp. Juliana Tremper</option>
+                            <option>Insp. Juliano Bonacina</option>
+                            <option>Insp. Lucas Loss</option>
+                            <option>Esc. Luciana Bortoli</option>
+                            <option>Insp. Tais Boesing</option>
+                            <option>Com. Teresinha Carivali</option>
+                            <option>Insp. Thássia Guterres</option>
+                            <option>Insp. Thiago Meireles</option>
+                            <option>Insp. Vanessa Trindade</option>
+                            <option>Insp. Jucinéia Morales</option>
                         </select>
                     </div>
                     <div>
@@ -449,8 +471,8 @@
             "Insp. Jucinéia Morales": "Juci"
         };
 
-        // lista base de pessoas (ordenada alfabeticamente)
-        let allPeople = [
+        // Lista de pessoas (apenas para ordenação e uso interno)
+        const allPeople = [
             "Insp. Acauã",
             "Insp. Alexandre Brozoza",
             "Esc. Anderson Saraiva",
@@ -473,7 +495,7 @@
             "Insp. Thássia Guterres",
             "Insp. Thiago Meireles",
             "Insp. Vanessa Trindade"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR')); // ordena por ordem alfabética PT-BR [web:8]
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR')); // apenas ordenação interna [web:8]
 
         /* Escala janeiro–fevereiro 2026 (ajustada) */
         const schedule = {
@@ -564,18 +586,6 @@
             });
         }
 
-        // preenche o select de pessoa com allPeople em ordem alfabética
-        function populatePersonSelect() {
-            const sel = document.getElementById('person-select');
-            sel.innerHTML = '<option value=\"\">-- Escolha uma pessoa --</option>';
-            allPeople.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p;
-                opt.textContent = p;
-                sel.appendChild(opt);
-            });
-        }
-
         function getTodayBrasilia() {
             const now = new Date();
             const offset = -3;
@@ -642,8 +652,23 @@
 
             if (index === 1) {
                 document.getElementById('output').value = '';
+                document.getElementById('person-select').value = '';
                 document.getElementById('month-filter').value = '';
                 document.getElementById('month-summary').style.display = 'none';
+
+                // aqui atualizamos o select, preservando o texto original das <option>
+                const originalOptions = Array.from(document.querySelectorAll('#person-select option'))
+                    .slice(1) // pula o "-- Escolha uma pessoa --"
+                    .map(o => o.textContent);
+                const ordered = originalOptions.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+                const sel = document.getElementById('person-select');
+                sel.innerHTML = '<option value=\"\">-- Escolha uma pessoa --</option>';
+                ordered.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    sel.appendChild(opt);
+                });
             }
         }
 
@@ -871,7 +896,6 @@
 
         window.addEventListener('DOMContentLoaded', function() {
             populateDateSelects();
-            populatePersonSelect();
             const todayDate = getTodayBrasilia();
             if (schedule[todayDate]) {
                 lastSelectedDate = todayDate;
