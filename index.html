@@ -496,7 +496,6 @@
             "Insp. Jucinéia Morales"
         ];
 
-        /* Escala 01/01/2026 a 28/02/2026 (igual à sua, só mudando o texto de JUCI via nameMap/phoneMap) */
         const schedule = {
             "01/01/2026": ["quinta-feira", "Jeff", "Cristiano", "Edna"],
             "02/01/2026": ["sexta-feira", "Cau", "Cátia", "Dago"],
@@ -623,7 +622,7 @@
             return months[month] || "";
         }
 
-        // Ordena alfabeticamente o select de pessoa mantendo o mesmo formato visual
+        // Ordena alfabeticamente o select de pessoa mantendo o layout
         function sortPersonSelect() {
             const sel = document.getElementById('person-select');
             const opts = Array.from(sel.options).slice(1).map(o => o.textContent);
@@ -688,38 +687,38 @@
             const nome2 = nameMap[sa02];
             const fone2 = phoneMap[sa02];
 
-            let text = "*Sobreaviso DRV/DEIC*\\n";
+            let text = "*Sobreaviso DRV/DEIC*\n";
 
             if (isSearchingByPerson) {
-                text += "Data: " + date + " (" + dayOfWeek + ")\\n\\n";
+                text += "Data: " + date + " (" + dayOfWeek + ")\n\n";
             } else {
-                text += "Data: " + date + "\\n\\n";
+                text += "Data: " + date + "\n\n";
             }
 
             if (nome1 && fone1) {
-                text += nome1 + "\\n" + fone1 + "\\n\\n";
+                text += nome1 + "\n" + fone1 + "\n\n";
             } else if (nome1) {
-                text += nome1 + "\\n\\n";
+                text += nome1 + "\n\n";
             }
 
             if (nome2 && fone2) {
-                text += nome2 + "\\n" + fone2 + "\\n\\n";
+                text += nome2 + "\n" + fone2 + "\n\n";
             } else if (nome2) {
-                text += nome2 + "\\n\\n";
+                text += nome2 + "\n\n";
             }
 
             if (saNac && saNac !== "") {
                 const nomeNac = nameMap[saNac];
                 const foneNac = phoneMap[saNac];
                 if (nomeNac && foneNac) {
-                    text += "NAC: " + nomeNac + "\\n" + foneNac + "\\n\\n";
+                    text += "NAC: " + nomeNac + "\n" + foneNac + "\n\n";
                 }
             }
 
-            text += "Chefe de SI: Com. Bruna Caldeira\\n";
-            text += "(51) 99139-9403\\n\\n";
-            text += "Autoridade Policial:\\n";
-            text += "Del. Jeiselaure de Souza\\n";
+            text += "Chefe de SI: Com. Bruna Caldeira\n";
+            text += "(51) 99139-9403\n\n";
+            text += "Autoridade Policial:\n";
+            text += "Del. Jeiselaure de Souza\n";
             text += "(51) 99145-8919";
 
             return text;
@@ -781,15 +780,15 @@
                 summaryDiv.textContent = monthName + ": " + datesFound.length + " sobreavisos";
                 summaryDiv.style.display = 'block';
             } else {
-                if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\\n";
-                if (fevCount > 0) result += "Fevereiro: " + fevCount + " sobreavisos\\n";
-                result += "\\n════════════════════════════════════════\\n\\n";
+                if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\n";
+                if (fevCount > 0) result += "Fevereiro: " + fevCount + " sobreavisos\n";
+                result += "\n════════════════════════════════════════\n\n";
                 summaryDiv.style.display = 'none';
             }
 
             for (let i = 0; i < datesFound.length; i++) {
                 if (i > 0) {
-                    result += "\\n\\n════════════════════════════════════════\\n\\n";
+                    result += "\n\n════════════════════════════════════════\n\n";
                 }
                 result += buildMessage(datesFound[i]);
             }
@@ -898,7 +897,7 @@
 
         window.addEventListener('DOMContentLoaded', function() {
             populateDateSelects();
-            sortPersonSelect(); // deixa a lista da aba pessoa em ordem alfabética
+            sortPersonSelect();
             const todayDate = getTodayBrasilia();
             if (schedule[todayDate]) {
                 lastSelectedDate = todayDate;
