@@ -471,7 +471,6 @@
             "Insp. Jucinéia Morales": "Juci"
         };
 
-        // Lista de pessoas (apenas para ordenação e uso interno)
         const allPeople = [
             "Insp. Acauã",
             "Insp. Alexandre Brozoza",
@@ -485,7 +484,6 @@
             "Esc. Fernanda Piazza",
             "Insp. Guilherme Mello",
             "Esc. Jefferson Antoniol",
-            "Insp. Jucinéia Morales",
             "Insp. Juliana Tremper",
             "Insp. Juliano Bonacina",
             "Insp. Lucas Loss",
@@ -494,10 +492,11 @@
             "Com. Teresinha Carivali",
             "Insp. Thássia Guterres",
             "Insp. Thiago Meireles",
-            "Insp. Vanessa Trindade"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR')); // apenas ordenação interna [web:8]
+            "Insp. Vanessa Trindade",
+            "Insp. Jucinéia Morales"
+        ];
 
-        /* Escala janeiro–fevereiro 2026 (ajustada) */
+        /* Escala 01/01/2026 a 28/02/2026 (igual à sua, só mudando o texto de JUCI via nameMap/phoneMap) */
         const schedule = {
             "01/01/2026": ["quinta-feira", "Jeff", "Cristiano", "Edna"],
             "02/01/2026": ["sexta-feira", "Cau", "Cátia", "Dago"],
@@ -541,22 +540,22 @@
             "08/02/2026": ["domingo", "Cristiano", "Luciana", "Brozoza"],
             "09/02/2026": ["segunda-feira", "Saraiva", "Thássia", "César"],
             "10/02/2026": ["terça-feira", "Bona", "Thiago", "Juliana"],
-            "11/02/2026": ["quarta-feira", "Saraiva", "Cristiano", "Vanessa"],
+            "11/02/2026": ["quarta-feira", "Dago", "Cristiano", "Vanessa"],
             "12/02/2026": ["quinta-feira", "Saraiva", "Thássia", "César"],
             "13/02/2026": ["sexta-feira", "Loss", "Luciana", "Brozoza"],
             "14/02/2026": ["sábado", "Saraiva", "Thássia", "César"],
             "15/02/2026": ["domingo", "Saraiva", "Thássia", "César"],
             "16/02/2026": ["segunda-feira", "César", "Thiago", "Juci"],
             "17/02/2026": ["terça-feira", "Juci", "Saraiva", "Juliana"],
-            "18/02/2026": ["quarta-feira", "Dago", "Cristiano", "Vanessa"],
-            "19/02/2026": ["quinta-feira", "Loss", "Luciana", "Brozoza"],
+            "18/02/2026": ["quarta-feira", "Dago", "Cristiano", "Juci"],
+            "19/02/2026": ["quinta-feira", "Loss", "Luciana", "Vanessa"],
             "20/02/2026": ["sexta-feira", "Brozoza", "Thássia", "César"],
             "21/02/2026": ["sábado", "Bona", "Thiago", "Juliana"],
             "22/02/2026": ["domingo", "Bona", "Thiago", "Juliana"],
             "23/02/2026": ["segunda-feira", "Cristiano", "Vanessa", "César"],
             "24/02/2026": ["terça-feira", "Bona", "Thiago", "Juliana"],
             "25/02/2026": ["quarta-feira", "Loss", "Luciana", "Brozoza"],
-            "26/02/2026": ["quinta-feira", "Saraiva", "Juci", "Dago"],
+            "26/02/2026": ["quinta-feira", "Saraiva", "Juci", "Bona"],
             "27/02/2026": ["sexta-feira", "Bona", "Thiago", "Vanessa"],
             "28/02/2026": ["sábado", "Dago", "Cristiano", "Vanessa"]
         };
@@ -624,6 +623,20 @@
             return months[month] || "";
         }
 
+        // Ordena alfabeticamente o select de pessoa mantendo o mesmo formato visual
+        function sortPersonSelect() {
+            const sel = document.getElementById('person-select');
+            const opts = Array.from(sel.options).slice(1).map(o => o.textContent);
+            opts.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            sel.innerHTML = '<option value="">-- Escolha uma pessoa --</option>';
+            opts.forEach(t => {
+                const op = document.createElement('option');
+                op.textContent = t;
+                op.value = t;
+                sel.appendChild(op);
+            });
+        }
+
         function showTab(index) {
             currentTab = index;
             const contents = document.querySelectorAll('.tab-content');
@@ -655,20 +668,6 @@
                 document.getElementById('person-select').value = '';
                 document.getElementById('month-filter').value = '';
                 document.getElementById('month-summary').style.display = 'none';
-
-                // aqui atualizamos o select, preservando o texto original das <option>
-                const originalOptions = Array.from(document.querySelectorAll('#person-select option'))
-                    .slice(1) // pula o "-- Escolha uma pessoa --"
-                    .map(o => o.textContent);
-                const ordered = originalOptions.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-                const sel = document.getElementById('person-select');
-                sel.innerHTML = '<option value=\"\">-- Escolha uma pessoa --</option>';
-                ordered.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p;
-                    opt.textContent = p;
-                    sel.appendChild(opt);
-                });
             }
         }
 
@@ -826,14 +825,17 @@
 
             for (let i = 1; i <= 3; i++) {
                 const elem = document.getElementById('swap-person-' + i);
-                elem.innerHTML = '<option value=\"\">-- ' + names[i-1] + ' --</option>';
+                elem.innerHTML = '<option value="">-- ' + names[i-1] + ' --</option>';
                 elem.value = '';
 
                 const forElem = document.getElementById('swap-for-' + i);
-                forElem.innerHTML = '<option value=\"\">-- Selecione --</option>';
-                allPeople.forEach(person => {
-                    forElem.innerHTML += '<option value=\"' + person + '\">' + person + '</option>';
-                });
+                forElem.innerHTML = '<option value="">-- Selecione --</option>';
+                allPeople
+                    .slice()
+                    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+                    .forEach(person => {
+                        forElem.innerHTML += '<option value="' + person + '">' + person + '</option>';
+                    });
             }
 
             document.getElementById('swap-options-container').style.display = 'block';
@@ -896,6 +898,7 @@
 
         window.addEventListener('DOMContentLoaded', function() {
             populateDateSelects();
+            sortPersonSelect(); // deixa a lista da aba pessoa em ordem alfabética
             const todayDate = getTodayBrasilia();
             if (schedule[todayDate]) {
                 lastSelectedDate = todayDate;
