@@ -316,6 +316,7 @@
                             <option value="">-- Todos os meses --</option>
                             <option value="01">Janeiro 2026</option>
                             <option value="02">Fevereiro 2026</option>
+                            <option value="03">Março 2026</option>
                         </select>
                     </div>
                 </div>
@@ -556,7 +557,39 @@
             "25/02/2026": ["quarta-feira", "Loss", "Luciana", "Brozoza"],
             "26/02/2026": ["quinta-feira", "Saraiva", "Juci", "Dago"],
             "27/02/2026": ["sexta-feira", "Bona", "Thiago", "Vanessa"],
-            "28/02/2026": ["sábado", "Dago", "Cristiano", "Vanessa"]
+            "28/02/2026": ["sábado", "Dago", "Cristiano", "Vanessa"],
+
+            "01/03/2026": ["domingo", "Dago", "Cristiano", "Vanessa"],
+            "02/03/2026": ["segunda-feira", "Loss", "Luciana", "Brozoza"],
+            "03/03/2026": ["terça-feira", "Saraiva", "Thássia", "César"],
+            "04/03/2026": ["quarta-feira", "Bona", "Thiago", "Piazza"],
+            "05/03/2026": ["quinta-feira", "Vanessa", "Jeff", "Gui Mello"],
+            "06/03/2026": ["sexta-feira", "Cau", "Melo", "Teresinha"],
+            "07/03/2026": ["sábado", "Loss", "Luciana", "Brozoza"],
+            "08/03/2026": ["domingo", "Loss", "Luciana", "Brozoza"],
+            "09/03/2026": ["segunda-feira", "Vanessa", "Edna", "Cátia"],
+            "10/03/2026": ["terça-feira", "Dago", "Cátia", "Laura"],
+            "11/03/2026": ["quarta-feira", "Brozoza", "Loss", "Luciana"],
+            "12/03/2026": ["quinta-feira", "Bona", "Saraiva", "Teresinha"],
+            "13/03/2026": ["sexta-feira", "Juci", "César", "Thiago"],
+            "14/03/2026": ["sábado", "Saraiva", "Vanessa", "César"],
+            "15/03/2026": ["domingo", "Saraiva", "Teresinha", "César"],
+            "16/03/2026": ["segunda-feira", "Gui Mello", "Vanessa", "Jeff"],
+            "17/03/2026": ["terça-feira", "Thássia", "Cau", "Melo"],
+            "18/03/2026": ["quarta-feira", "Laura", "Gui Mello", "Edna"],
+            "19/03/2026": ["quinta-feira", "Piazza", "Dago", "Cátia"],
+            "20/03/2026": ["sexta-feira", "Laura", "Juci", "Loss"],
+            "21/03/2026": ["sábado", "Bona", "Thiago", "Piazza"],
+            "22/03/2026": ["domingo", "Bona", "Thiago", "Piazza"],
+            "23/03/2026": ["segunda-feira", "Luciana", "Brozoza", "Saraiva"],
+            "24/03/2026": ["terça-feira", "Teresinha", "César", "Bona"],
+            "25/03/2026": ["quarta-feira", "Thiago", "Piazza", "Loss"],
+            "26/03/2026": ["quinta-feira", "Jeff", "Gui Mello", "Vanessa"],
+            "27/03/2026": ["sexta-feira", "Melo", "Thássia", "Cau"],
+            "28/03/2026": ["sábado", "Teresinha", "Jeff", "Gui Mello"],
+            "29/03/2026": ["domingo", "Vanessa", "Jeff", "Gui Mello"],
+            "30/03/2026": ["segunda-feira", "Edna", "Melo", "Dago"],
+            "31/03/2026": ["terça-feira", "Cátia", "Thássia", "Juci"]
         };
 
         function populateDateSelects() {
@@ -617,7 +650,8 @@
         function getMonthName(month) {
             const months = {
                 "01": "Janeiro",
-                "02": "Fevereiro"
+                "02": "Fevereiro",
+                "03": "Março"
             };
             return months[month] || "";
         }
@@ -734,6 +768,7 @@
             let result = '';
             let janCount = 0;
             let fevCount = 0;
+            let marCount = 0;
             let datesFound = [];
 
             Object.keys(schedule).forEach(date => {
@@ -746,11 +781,9 @@
 
                 if (sa01 === personShort || sa02 === personShort || saNac === personShort) {
                     datesFound.push(date);
-                    if (date.includes("/01/")) {
-                        janCount++;
-                    } else if (date.includes("/02/")) {
-                        fevCount++;
-                    }
+                    if (date.includes("/01/")) janCount++;
+                    else if (date.includes("/02/")) fevCount++;
+                    else if (date.includes("/03/")) marCount++;
                 }
             });
 
@@ -768,6 +801,7 @@
             } else {
                 if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\n";
                 if (fevCount > 0) result += "Fevereiro: " + fevCount + " sobreavisos\n";
+                if (marCount > 0) result += "Março: " + marCount + " sobreavisos\n";
                 result += "\n════════════════════════════════════════\n\n";
                 summaryDiv.style.display = 'none';
             }
@@ -814,7 +848,7 @@
                 elem.value = '';
             }
 
-            const ordered = allPeople.slice().sort((a, b) => a.localeCompare(b, 'pt-BR')); // [web:8]
+            const ordered = allPeople.slice().sort((a, b) => a.localeCompare(b, 'pt-BR'));
             for (let i = 1; i <= 3; i++) {
                 const forElem = document.getElementById('swap-for-' + i);
                 forElem.innerHTML = '<option value="">-- Selecione --</option>';
