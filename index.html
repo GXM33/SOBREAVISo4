@@ -317,6 +317,7 @@
                             <option value="01">Janeiro 2026</option>
                             <option value="02">Fevereiro 2026</option>
                             <option value="03">Março 2026</option>
+                            <option value="04">Abril 2026</option>
                         </select>
                     </div>
                 </div>
@@ -589,7 +590,37 @@
             "28/03/2026": ["sábado", "Teresinha", "Jeff", "Gui Mello"],
             "29/03/2026": ["domingo", "Vanessa", "Jeff", "Gui Mello"],
             "30/03/2026": ["segunda-feira", "Edna", "Melo", "Dago"],
-            "31/03/2026": ["terça-feira", "Cátia", "Thássia", "Juci"]
+            "31/03/2026": ["terça-feira", "Cátia", "Thássia", "Juci"],
+            "01/04/2026": ["quarta-feira", "Vanessa", "Jeff", "Gui Mello"],
+            "02/04/2026": ["quinta-feira", "Dago", "Teresinha", "Bona"],
+            "03/04/2026": ["sexta-feira", "Dago", "Thiago", "Piazza"],
+            "04/04/2026": ["sábado", "Cau", "Melo", "Thássia"],
+            "05/04/2026": ["domingo", "Cau", "Melo", "Thássia"],
+            "06/04/2026": ["segunda-feira", "Vanessa", "Jeff", "Gui Mello"],
+            "07/04/2026": ["terça-feira", "Cau", "Melo", "Thássia"],
+            "08/04/2026": ["quarta-feira", "Bona", "Edna", "Juliana"],
+            "09/04/2026": ["quinta-feira", "Saraiva", "Cátia", "Laura"],
+            "10/04/2026": ["sexta-feira", "Loss", "Luciana", "Brozoza"],
+            "11/04/2026": ["sábado", "Loss", "Edna", "Juliana"],
+            "12/04/2026": ["domingo", "Loss", "Edna", "Juliana"],
+            "13/04/2026": ["segunda-feira", "Saraiva", "Teresinha", "César"],
+            "14/04/2026": ["terça-feira", "César", "Thiago", "Piazza"],
+            "15/04/2026": ["quarta-feira", "Vanessa", "Jeff", "Gui Mello"],
+            "16/04/2026": ["quinta-feira", "Cau", "Melo", "Thássia"],
+            "17/04/2026": ["sexta-feira", "Gui Mello", "Edna", "Juliana"],
+            "18/04/2026": ["sábado", "Saraiva", "Cátia", "Laura"],
+            "19/04/2026": ["domingo", "Bona", "Cátia", "Laura"],
+            "20/04/2026": ["segunda-feira", "Loss", "Luciana", "Brozoza"],
+            "21/04/2026": ["terça-feira", "Dago", "Teresinha", "César"],
+            "22/04/2026": ["quarta-feira", "Dago", "Cátia", "Laura"],
+            "23/04/2026": ["quinta-feira", "Cristiano", "Thiago", "Piazza"],
+            "24/04/2026": ["sexta-feira", "Vanessa", "Jeff", "Cristiano"],
+            "25/04/2026": ["sábado", "Cristiano", "Luciana", "Brozoza"],
+            "26/04/2026": ["domingo", "Cristiano", "Luciana", "Brozoza"],
+            "27/04/2026": ["segunda-feira", "Cau", "Melo", "Thássia"],
+            "28/04/2026": ["terça-feira", "Cristiano", "Edna", "Juliana"],
+            "29/04/2026": ["quarta-feira", "Dago", "Cátia", "Laura"],
+            "30/04/2026": ["quinta-feira", "Loss", "Luciana", "Brozoza"]
         };
 
         function populateDateSelects() {
@@ -651,7 +682,8 @@
             const months = {
                 "01": "Janeiro",
                 "02": "Fevereiro",
-                "03": "Março"
+                "03": "Março",
+                "04": "Abril"
             };
             return months[month] || "";
         }
@@ -769,6 +801,7 @@
             let janCount = 0;
             let fevCount = 0;
             let marCount = 0;
+            let abrCount = 0;
             let datesFound = [];
 
             Object.keys(schedule).forEach(date => {
@@ -784,6 +817,7 @@
                     if (date.includes("/01/")) janCount++;
                     else if (date.includes("/02/")) fevCount++;
                     else if (date.includes("/03/")) marCount++;
+                    else if (date.includes("/04/")) abrCount++;
                 }
             });
 
@@ -802,6 +836,7 @@
                 if (janCount > 0) result += "Janeiro: " + janCount + " sobreavisos\n";
                 if (fevCount > 0) result += "Fevereiro: " + fevCount + " sobreavisos\n";
                 if (marCount > 0) result += "Março: " + marCount + " sobreavisos\n";
+                if (abrCount > 0) result += "Abril: " + abrCount + " sobreavisos\n";
                 result += "\n════════════════════════════════════════\n\n";
                 summaryDiv.style.display = 'none';
             }
