@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Sobreaviso DRV/DEIC (Final v5)</title>
+    <title>Gerador de Sobreaviso DRV/DEIC (Final v6)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; color: #333; }
@@ -247,7 +247,6 @@
                 document.getElementById('sync-status').textContent = "ONLINE";
                 document.getElementById('sync-status').style.background = "#16a34a";
             } catch (e) {
-                console.log("Usando dados offline (Maio)");
                 document.getElementById('sync-status').textContent = "OFFLINE";
                 document.getElementById('sync-status').style.background = "#6b7280";
             }
@@ -276,10 +275,16 @@
             populateDateSelects();
             populatePersonSelect();
             populateMonthFilter();
+            autoSelectToday();
+        }
+
+        function autoSelectToday() {
             const today = getTodayBrasilia();
             if (schedule[today]) {
                 document.getElementById('date-select').value = today;
                 searchByDate();
+            } else {
+                document.getElementById('output').value = "Escala de hoje (" + today + ") não encontrada.";
             }
         }
 
@@ -317,8 +322,13 @@
             currentTab = i;
             document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === i));
             document.querySelectorAll('.tab-btn').forEach((b, idx) => b.classList.toggle('active', idx === i));
-            if (i === 0) searchByDate();
-            if (i === 2 && lastSelectedDate) loadSwapOptions();
+            
+            if (i === 0) {
+                autoSelectToday();
+            }
+            if (i === 2 && lastSelectedDate) {
+                loadSwapOptions();
+            }
         }
 
         function buildMessage(date, swaps = null) {
@@ -340,7 +350,10 @@
         function searchByDate() {
             isSearchingByPerson = false;
             const d = document.getElementById('date-select').value;
-            if (d) { lastSelectedDate = d; document.getElementById('output').value = buildMessage(d); }
+            if (d) { 
+                lastSelectedDate = d; 
+                document.getElementById('output').value = buildMessage(d); 
+            }
         }
 
         function searchByPerson() {
