@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Sobreaviso DRV/DEIC (Final v6)</title>
+    <title>Gerador de Sobreaviso DRV/DEIC (Final v7)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; color: #333; }
@@ -179,7 +179,38 @@
             "28/05/2026": ["quinta-feira", "JEFF", "CÁTIA", "LAURA"],
             "29/05/2026": ["sexta-feira", "LOSS", "LUCIANA", "BROZOZA"],
             "30/05/2026": ["sábado", "CRISTIANO", "JEFF", "VANESSA"],
-            "31/05/2026": ["domingo", "CRISTIANO", "JEFF", "JULIANA"]
+            "31/05/2026": ["domingo", "CRISTIANO", "JEFF", "JULIANA"],
+            // JUNHO
+            "01/06/2026": ["segunda-feira", "SARAIVA", "TERESINHA", "CÉSAR"],
+            "02/06/2026": ["terça-feira", "BONA", "THIAGO", "PIAZZA"],
+            "03/06/2026": ["quarta-feira", "VANESSA", "JEFF", "GUI MELLO"],
+            "04/06/2026": ["quinta-feira", "JULIANA", "MELO", "THÁSSIA"],
+            "05/06/2026": ["sexta-feira", "CRISTIANO", "EDNA", "JULIANA"],
+            "06/06/2026": ["sábado", "CÉSAR", "CÁTIA", "LAURA"],
+            "07/06/2026": ["domingo", "CÉSAR", "CÁTIA", "LAURA"],
+            "08/06/2026": ["segunda-feira", "LOSS", "LUCIANA", "MELO"],
+            "09/06/2026": ["terça-feira", "DAGO", "CÁTIA", "LAURA"],
+            "10/06/2026": ["quarta-feira", "SARAIVA", "TERESINHA", "DAGO"],
+            "11/06/2026": ["quinta-feira", "BONA", "THIAGO", "PIAZZA"],
+            "12/06/2026": ["sexta-feira", "VANESSA", "JEFF", "GUI MELLO"],
+            "13/06/2026": ["sábado", "LOSS", "LUCIANA", "BROZOZA"],
+            "14/06/2026": ["domingo", "LOSS", "LUCIANA", "BROZOZA"],
+            "15/06/2026": ["segunda-feira", "SARAIVA", "MELO", "THÁSSIA"],
+            "16/06/2026": ["terça-feira", "CRISTIANO", "EDNA", "JULIANA"],
+            "17/06/2026": ["quarta-feira", "DAGO", "CÁTIA", "LAURA"],
+            "18/06/2026": ["quinta-feira", "VANESSA", "JEFF", "GUI MELLO"],
+            "19/06/2026": ["sexta-feira", "LOSS", "LUCIANA", "BROZOZA"],
+            "20/06/2026": ["sábado", "SARAIVA", "TERESINHA", "DAGO"],
+            "21/06/2026": ["domingo", "SARAIVA", "TERESINHA", "DAGO"],
+            "22/06/2026": ["segunda-feira", "BONA", "THIAGO", "PIAZZA"],
+            "23/06/2026": ["terça-feira", "VANESSA", "JEFF", "GUI MELLO"],
+            "24/06/2026": ["quarta-feira", "EDNA", "BROZOZA", "THÁSSIA"],
+            "25/06/2026": ["quinta-feira", "CRISTIANO", "EDNA", "JULIANA"],
+            "26/06/2026": ["sexta-feira", "CÉSAR", "CÁTIA", "LAURA"],
+            "27/06/2026": ["sábado", "BONA", "THIAGO", "PIAZZA"],
+            "28/06/2026": ["domingo", "BONA", "THIAGO", "PIAZZA"],
+            "29/06/2026": ["segunda-feira", "LOSS", "LUCIANA", "BROZOZA"],
+            "30/06/2026": ["terça-feira", "SARAIVA", "TERESINHA", "CÉSAR"]
         };
 
         const namePhoneData = {
@@ -322,13 +353,8 @@
             currentTab = i;
             document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === i));
             document.querySelectorAll('.tab-btn').forEach((b, idx) => b.classList.toggle('active', idx === i));
-            
-            if (i === 0) {
-                autoSelectToday();
-            }
-            if (i === 2 && lastSelectedDate) {
-                loadSwapOptions();
-            }
+            if (i === 0) autoSelectToday();
+            if (i === 2 && lastSelectedDate) loadSwapOptions();
         }
 
         function buildMessage(date, swaps = null) {
@@ -350,10 +376,7 @@
         function searchByDate() {
             isSearchingByPerson = false;
             const d = document.getElementById('date-select').value;
-            if (d) { 
-                lastSelectedDate = d; 
-                document.getElementById('output').value = buildMessage(d); 
-            }
+            if (d) { lastSelectedDate = d; document.getElementById('output').value = buildMessage(d); }
         }
 
         function searchByPerson() {
