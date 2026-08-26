@@ -337,7 +337,7 @@
                     const label = (c.label || '').trim().toUpperCase();
                     if (label === 'DATA') colMap.data = i;
                     if (label === 'DIA DA SEMANA') colMap.dia = i;
-                    if (label === 'SA 01') colMap.sa1 = i;
+                    if (label.includes('SA 01')) colMap.sa1 = i;
                     if (label === 'SA 02') colMap.sa2 = i;
                     if (label === 'SA 03') colMap.sa3 = i;
                 });
