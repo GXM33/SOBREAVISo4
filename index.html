@@ -114,10 +114,7 @@
     <script>
         const SPREADSHEET_ID = '1JdkTcFj05rUPWcCbf_tWc5ym1U9EAmzmb4X2fBvM4LE';
         const GID = '2099896829';
-        function getGVizUrl() {
-            // O parâmetro de tempo evita que o navegador reutilize uma resposta antiga.
-            return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}&t=${Date.now()}`;
-        }
+        const GViz_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
 
         let schedule = {
             // ABRIL
@@ -277,7 +274,70 @@
             "28/08/2026": ["sexta-feira", "SARAIVA", "JULIANA", "CÉSAR"],
             "29/08/2026": ["sábado", "CAU", "LOSS", "THÁSSIA"],
             "30/08/2026": ["domingo", "CAU", "LOSS", "THÁSSIA"],
-            "31/08/2026": ["segunda-feira", "BONA", "THIAGO", "PIAZZA"]
+            "31/08/2026": ["segunda-feira", "BONA", "THIAGO", "PIAZZA"],
+            // SETEMBRO
+            "01/09/2026": ["terça-feira", "VANESSA", "JEFF", "SARAIVA"],
+            "02/09/2026": ["quarta-feira", "CAU", "SARAIVA", "BROZOZA"],
+            "03/09/2026": ["quinta-feira", "CRISTIANO", "EDNA", "VANESSA"],
+            "04/09/2026": ["sexta-feira", "THIAGO", "CÁTIA", "SARAIVA"],
+            "05/09/2026": ["sábado", "CRISTIANO", "EDNA", "SARAIVA"],
+            "06/09/2026": ["domingo", "CRISTIANO", "EDNA", "SARAIVA"],
+            "07/09/2026": ["segunda-feira", "TERESINHA", "BONA", "PIAZZA"],
+            "08/09/2026": ["terça-feira", "LOSS", "LUCIANA", "BROZOZA"],
+            "09/09/2026": ["quarta-feira", "CÉSAR", "LAURA", "JUCI"],
+            "10/09/2026": ["quinta-feira", "BROZOZA", "VANESSA", "JEFF"],
+            "11/09/2026": ["sexta-feira", "GUI MELLO", "THÁSSIA", "CÉSAR"],
+            "12/09/2026": ["sábado", "DAGO", "BROZOZA", "LAURA"],
+            "13/09/2026": ["domingo", "DAGO", "BROZOZA", "LAURA"],
+            "14/09/2026": ["segunda-feira", "CAU", "CRISTIANO", "JUCI"],
+            "15/09/2026": ["terça-feira", "EDNA", "DAGO", "LAURA"],
+            "16/09/2026": ["quarta-feira", "CÁTIA", "JUCI", "THIAGO"],
+            "17/09/2026": ["quinta-feira", "LOSS", "LUCIANA", "GUI MELLO"],
+            "18/09/2026": ["sexta-feira", "MELO", "TERESINHA", "DAGO"],
+            "19/09/2026": ["sábado", "JUCI", "LOSS", "CÁTIA"],
+            "20/09/2026": ["domingo", "JUCI", "LOSS", "CÁTIA"],
+            "21/09/2026": ["segunda-feira", "BONA", "PIAZZA", "GUI MELLO"],
+            "22/09/2026": ["terça-feira", "JULIANA", "JEFF", "CAU"],
+            "23/09/2026": ["quarta-feira", "MELO", "THÁSSIA", "EDNA"],
+            "24/09/2026": ["quinta-feira", "CRISTIANO", "JULIANA", "JUCI"],
+            "25/09/2026": ["sexta-feira", "DAGO", "CÁTIA", "LAURA"],
+            "26/09/2026": ["sábado", "LUCIANA", "JULIANA", "CÉSAR"],
+            "27/09/2026": ["domingo", "LUCIANA", "JULIANA", "CÉSAR"],
+            "28/09/2026": ["segunda-feira", "LOSS", "LUCIANA", "THÁSSIA"],
+            "29/09/2026": ["terça-feira", "MELO", "TERESINHA", "CÉSAR"],
+            "30/09/2026": ["quarta-feira", "BONA", "THIAGO", "PIAZZA"],
+            // OUTUBRO
+            "01/10/2026": ["quinta-feira", "BONA", "EDNA", "GUI MELLO"],
+            "02/10/2026": ["sexta-feira", "LOSS", "MELO", "THÁSSIA"],
+            "03/10/2026": ["sábado", "THÁSSIA", "PIAZZA", "BONA"],
+            "04/10/2026": ["domingo", "THÁSSIA", "PIAZZA", "BONA"],
+            "05/10/2026": ["segunda-feira", "CRISTIANO", "JEFF", "JULIANA"],
+            "06/10/2026": ["terça-feira", "DAGO", "CÁTIA", "LAURA"],
+            "07/10/2026": ["quarta-feira", "JUCI", "THÁSSIA", "SARAIVA"],
+            "08/10/2026": ["quinta-feira", "CAU", "LUCIANA", "BROZOZA"],
+            "09/10/2026": ["sexta-feira", "BONA", "THIAGO", "PIAZZA"],
+            "10/10/2026": ["sábado", "THIAGO", "MELO", "JEFF"],
+            "11/10/2026": ["domingo", "THIAGO", "MELO", "JEFF"],
+            "12/10/2026": ["segunda-feira", "SARAIVA", "JULIANA", "CÉSAR"],
+            "13/10/2026": ["terça-feira", "LUCIANA", "JEFF", "GUI MELLO"],
+            "14/10/2026": ["quarta-feira", "CAU", "MELO", "CÁTIA"],
+            "15/10/2026": ["quinta-feira", "CRISTIANO", "EDNA", "LAURA"],
+            "16/10/2026": ["sexta-feira", "DAGO", "CÁTIA", "TERESINHA"],
+            "17/10/2026": ["sábado", "GUI MELLO", "TERESINHA", "VANESSA"],
+            "18/10/2026": ["domingo", "GUI MELLO", "TERESINHA", "VANESSA"],
+            "19/10/2026": ["segunda-feira", "JUCI", "CRISTINA", "CÉSAR"],
+            "20/10/2026": ["terça-feira", "LOSS", "VANESSA", "BROZOZA"],
+            "21/10/2026": ["quarta-feira", "SARAIVA", "TERESINHA", "CÉSAR"],
+            "22/10/2026": ["quinta-feira", "VANESSA", "THIAGO", "PIAZZA"],
+            "23/10/2026": ["sexta-feira", "VANESSA", "JEFF", "GUI MELLO"],
+            "24/10/2026": ["sábado", "CAU", "CRISTIANO", "JULIANA"],
+            "25/10/2026": ["domingo", "CAU", "CRISTIANO", "JULIANA"],
+            "26/10/2026": ["segunda-feira", "CAU", "MELO", "CRISTINA"],
+            "27/10/2026": ["terça-feira", "CRISTIANO", "EDNA", "JULIANA"],
+            "28/10/2026": ["quarta-feira", "DAGO", "THÁSSIA", "LAURA"],
+            "29/10/2026": ["quinta-feira", "JUCI", "CRISTINA", "CÉSAR"],
+            "30/10/2026": ["sexta-feira", "LOSS", "LUCIANA", "BROZOZA"],
+            "31/10/2026": ["sábado", "EDNA", "DAGO", "CÁTIA"]
         };
 
         const namePhoneData = {
@@ -306,9 +366,6 @@
             "LAURA": { full: "Insp. Laura Kila", phone: "(51) 98594-6129" }
         };
 
-        // Os dados abaixo funcionam apenas como reserva se a planilha estiver indisponível.
-        const fallbackSchedule = structuredClone(schedule);
-
         let nameMap = {};
         let phoneMap = {};
         let peopleShortMap = {};
@@ -320,65 +377,41 @@
 
         async function loadSheetsData() {
             try {
-                const response = await fetch(getGVizUrl(), { cache: 'no-store' });
-                if (!response.ok) throw new Error(`Google Sheets respondeu ${response.status}`);
-
+                const response = await fetch(GViz_URL);
                 const text = await response.text();
-                const start = text.indexOf('{');
-                const end = text.lastIndexOf('}');
-                if (start < 0 || end < start) throw new Error('Resposta inválida do Google Sheets');
-
-                const json = JSON.parse(text.substring(start, end + 1));
-                const rows = json.table?.rows || [];
-                const cols = json.table?.cols || [];
-                const colMap = {};
-
+                const json = JSON.parse(text.substring(47, text.length - 2));
+                const rows = json.table.rows;
+                const cols = json.table.cols;
+                
+                let colMap = {};
                 cols.forEach((c, i) => {
-                    const label = (c.label || '').trim().toUpperCase();
-                    if (label === 'DATA') colMap.data = i;
-                    if (label === 'DIA DA SEMANA') colMap.dia = i;
-                    if (label.includes('SA 01')) colMap.sa1 = i;
-                    if (label === 'SA 02') colMap.sa2 = i;
-                    if (label === 'SA 03') colMap.sa3 = i;
+                    if (c.label === "Data") colMap.data = i;
+                    if (c.label === "Dia da Semana") colMap.dia = i;
+                    if (c.label === "SA 01") colMap.sa1 = i;
+                    if (c.label === "SA 02") colMap.sa2 = i;
+                    if (c.label === "SA 03") colMap.sa3 = i;
                 });
 
-                const required = ['data', 'dia', 'sa1', 'sa2', 'sa3'];
-                if (required.some(key => colMap[key] === undefined)) {
-                    throw new Error('A aba precisa conter as colunas Data, Dia da Semana, SA 01, SA 02 e SA 03.');
-                }
-
-                // A planilha passa a ser a fonte oficial. Linhas removidas também deixam de aparecer.
-                schedule = {};
                 rows.forEach(r => {
-                    const cell = index => r.c?.[index];
-                    const date = String(cell(colMap.data)?.f || cell(colMap.data)?.v || '').trim();
-                    if (!date || !date.includes('/')) return;
-
-                    const day = String(cell(colMap.dia)?.v || '').trim();
-                    const sa1 = String(cell(colMap.sa1)?.v || '').trim().toUpperCase();
-                    const sa2 = String(cell(colMap.sa2)?.v || '').trim().toUpperCase();
-                    const sa3 = String(cell(colMap.sa3)?.v || '').trim().toUpperCase();
-                    if (sa1) schedule[date] = [day, sa1, sa2, sa3];
+                    const date = r.c[colMap.data]?.f || r.c[colMap.data]?.v;
+                    if (date && date.includes('/')) {
+                        const day = r.c[colMap.dia]?.v || '';
+                        const sa1 = (r.c[colMap.sa1]?.v || '').trim().toUpperCase();
+                        const sa2 = (r.c[colMap.sa2]?.v || '').trim().toUpperCase();
+                        const sa3 = (r.c[colMap.sa3]?.v || '').trim().toUpperCase();
+                        if (sa1) schedule[date] = [day, sa1, sa2, sa3];
+                    }
                 });
-
-                document.getElementById('sync-status').textContent = 'ONLINE';
-                document.getElementById('sync-status').style.background = '#16a34a';
+                document.getElementById('sync-status').textContent = "ONLINE";
+                document.getElementById('sync-status').style.background = "#16a34a";
             } catch (e) {
-                console.error('Erro ao sincronizar com o Google Sheets:', e);
-                schedule = structuredClone(fallbackSchedule);
-                document.getElementById('sync-status').textContent = 'OFFLINE';
-                document.getElementById('sync-status').style.background = '#6b7280';
+                document.getElementById('sync-status').textContent = "OFFLINE";
+                document.getElementById('sync-status').style.background = "#6b7280";
             }
             finalizeInit();
         }
 
         function finalizeInit() {
-            nameMap = {};
-            phoneMap = {};
-            peopleShortMap = {};
-            allPeople = [];
-            monthsAvailable = new Set();
-
             Object.keys(schedule).forEach(date => {
                 const m = date.split('/')[1];
                 monthsAvailable.add(m);
@@ -515,11 +548,7 @@
         function sendWhatsApp() { window.open('https://wa.me/?text=' + encodeURIComponent(document.getElementById('output').value), '_blank'); }
         function clearTab() { document.getElementById('output').value = ''; }
 
-        window.onload = () => {
-            loadSheetsData();
-            // Atualiza a escala no navegador a cada cinco minutos sem exigir novo deploy.
-            setInterval(loadSheetsData, 5 * 60 * 1000);
-        };
+        window.onload = loadSheetsData;
     </script>
 </body>
 </html>
